@@ -115,16 +115,35 @@ function draw() {
       obj_map.set(object.label, 1);
     }
 
+    /*
+    캠 가로 범위: 15 ~ 925
+    캠 세로 범위: 15 ~ 705
+    */
+
+    let rectx;
+    let recty;
+    let rectw;
+    let recth;
+    let pad = 3;
+    if (object.x < 15 + pad) { rectx = 15 + pad; }
+    else { rectx = object.x; }
+    if (object.y < 15 + pad) { recty = 15 + pad; }
+    else { recty = object.y; }
+    if (object.x + object.width > 925 - pad * 2) { rectw = 925 - pad * 2 - object.x; }
+    else { rectw = object.width; }
+    if (object.y + object.height > 705 - pad * 2) { recth = 705 - pad * 2 - object.y; }
+    else { recth = object.height; }
+
     stroke(0, 255, 0);
     strokeWeight(4);
     noFill();
-    rect(object.x, object.y, object.width, object.height);
+    rect(rectx, recty, rectw, recth);
     stroke(255, 255, 255);
     strokeWeight(4);
     fill(0);
     textSize(24);
     textFont(font);
-    text(`${object.label.replace('person', '사람')} ${obj_map.get(object.label)}`, object.x + 10, object.y + 24);
+    text(`${object.label.replace('person', '사람')} ${obj_map.get(object.label)}`, rectx + 10, recty + 24);
 
     if (state == 1 && object.label == 'person' && log_time != post_log_time) {
       // timestamp, person_number, posx, posy
