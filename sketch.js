@@ -94,7 +94,7 @@ function setup() {
   webcam.hide();
 
   // p5.js 캔버스를 스트림으로 변환
-  mediaStream = document.querySelector('canvas').captureStream(30); // 30fps
+  mediaStream = document.querySelector('canvas').captureStream(60); // 60fps
 
   // MediaRecorder를 사용해 녹화 설정
   recorder = new MediaRecorder(mediaStream);
