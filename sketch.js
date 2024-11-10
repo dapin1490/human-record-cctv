@@ -8,6 +8,8 @@ let obj_map = new Map();
 
 let maskGraphics;
 
+let htmlImage;
+
 let state = 0;
 // 0: main page  1: recording page  2: paused page  3: saved page
 
@@ -23,6 +25,9 @@ let total_record_time = 0;
 let log_writer;
 let post_log_time;
 let log_time;
+let filename;
+
+let recorder, chunks = [], mediaStream;
 
 let peopleNumber = 0;
 
@@ -88,6 +93,23 @@ function setup() {
   webcam.size(camw, camh);
   webcam.hide();
 
+  // p5.js 캔버스를 스트림으로 변환
+  mediaStream = document.querySelector('canvas').captureStream(30); // 30fps
+
+  // MediaRecorder를 사용해 녹화 설정
+  recorder = new MediaRecorder(mediaStream);
+  recorder.ondataavailable = (e) => chunks.push(e.data);
+
+  // 녹화가 끝나면 다운로드
+  recorder.onstop = () => {
+    const blob = new Blob(chunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${filename}.webm`;
+    a.click();
+  };
+
   detector.detect(webcam, gotDetections);
 }
 
@@ -124,6 +146,7 @@ function draw() {
     let recty;
     let rectw;
     let recth;
+    let obj_text = `${object.label.replace('person', '사람')} ${obj_map.get(object.label)}`;
     let pad = 3;
     if (object.x < 15 + pad) { rectx = 15 + pad; }
     else { rectx = object.x; }
@@ -134,16 +157,9 @@ function draw() {
     if (object.y + object.height > 705 - pad * 2) { recth = 705 - pad * 2 - object.y; }
     else { recth = object.height; }
 
-    stroke(0, 255, 0);
-    strokeWeight(4);
-    noFill();
-    rect(rectx, recty, rectw, recth);
-    stroke(255, 255, 255);
-    strokeWeight(4);
-    fill(0);
-    textSize(24);
-    textFont(font);
-    text(`${object.label.replace('person', '사람')} ${obj_map.get(object.label)}`, rectx + 10, recty + 24);
+    if (object.label == 'person') {
+      draw_obj(rectx, recty, rectw, recth, obj_text);
+    }
 
     if (state == 1 && object.label == 'person' && log_time != post_log_time) {
       // timestamp, person_number, posx, posy
@@ -169,6 +185,19 @@ function draw() {
     if (state == 3)
       state = 0;
   }
+}
+
+function draw_obj(rectx, recty, rectw, recth, obj_text) {
+  stroke(0, 255, 0);
+  strokeWeight(4);
+  noFill();
+  rect(rectx, recty, rectw, recth);
+  stroke(255, 255, 255);
+  strokeWeight(4);
+  fill(0);
+  textSize(24);
+  textFont(font);
+  text(obj_text, rectx + 10, recty + 24);
 }
 
 function btn_style(btn) {
@@ -280,25 +309,29 @@ function gotDetections(error, results) {
 }
 
 function record_start() {
-  let filename = `record_person_${year()}-${nf(month(), 2, 0)}-${nf(day(), 2, 0)}-${nf(hour(), 2, 0)}-${nf(minute(), 2, 0)}-${nf(second(), 2, 0)}.csv`;
+  filename = `record_person_${year()}-${nf(month(), 2, 0)}-${nf(day(), 2, 0)}-${nf(hour(), 2, 0)}-${nf(minute(), 2, 0)}-${nf(second(), 2, 0)}`;
 
-  log_writer = createWriter(filename);
+  log_writer = createWriter(`${filename}.csv`);
 
   log_writer.print(`timestamp,person_number,posx,posy`);
 
   state = 1;
   total_record_time = 0;
   recordingStartTime = millis();
+
+  recorder.start(); // start recording video
 }
 
 function record_pause() {
   if (state == 1) {
     state = 2;
     total_record_time += (millis() - recordingStartTime) / 1000;
+    recorder.pause();
   }
   else if (state == 2) {
     state = 1;
     recordingStartTime = millis();
+    recorder.resume();
   }
 }
 
@@ -310,6 +343,10 @@ function record_save() {
 
   log_writer.close();
   log_writer.clear();
+
+  recorder.stop(); // stop and save the video
+
+  fullscreen(false);
 
   showToast(state_text[state]);
 }
@@ -358,4 +395,13 @@ function showToast(message) {
     toast.style.opacity = "0";
     stateIndicator.show();
   }, 3000);
+}
+
+function keyPressed() {
+  if (key === 'f') {
+    let fs = fullscreen();
+  fullscreen(!fs);
+  }
+  // Uncomment to prevent any default behavior.
+  // return false;
 }
